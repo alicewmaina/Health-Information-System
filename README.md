@@ -36,7 +36,7 @@ python run.py
 | Feature | Method | Endpoint | Request Body |
 |---------|--------|----------|--------------|
 | Create Program | POST | `/programs` | `{"name": "Program Name"}` |
-| Register Client | POST | `/clients` | `{"client_id": "001", "name": "John Doe", "age": 30}` |
+| Register Client | POST | `/clients` | `{"client_id": "1", "name": "James bill", "age": 30}` |
 | Enroll Client | PUT | `/clients/<client_id>/enroll` | `{"programs": ["Program Name"]}` |
 | Search Clients | GET | `/clients/search?name=John` | - |
 | View Client | GET | `/clients/<client_id>` | - |
@@ -55,27 +55,27 @@ curl -X POST http://localhost:5000/programs \
 ```bash
 curl -X POST http://localhost:5000/clients \
   -H "Content-Type: application/json" \
-  -d '{"client_id": "001", "name": "John Doe", "age": 30}'
+  -d '{"client_id": "1", "name": "James bill", "age": 30}'
 ```
 
 ### Enroll a Client in Programs
 ```bash
-curl -X PUT http://localhost:5000/clients/001/enroll \
+curl -X PUT http://localhost:5000/clients/1/enroll \
   -H "Content-Type: application/json" \
   -d '{"programs": ["HIV Program"]}'
 ```
 
 ### Search for Clients
 ```bash
-curl http://localhost:5000/clients/search?name=John
+curl http://localhost:5000/clients/search?name=James
 ```
 
 ### View Client Profile
 ```bash
-curl http://localhost:5000/clients/001
+curl http://localhost:5000/clients/1
 ```
 
 ### Delete a Client
 ```bash
-curl -X DELETE http://localhost:5000/clients/001
+curl -X DELETE http://localhost:5000/clients/1
 ``` 
