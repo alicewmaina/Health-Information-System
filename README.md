@@ -2,6 +2,10 @@
 
 A professional Flask-based health information system that manages clients and health programs through a RESTful API.
 
+# Here is a link to my powerpoint presentation
+
+https://www.canva.com/design/DAGlvd39HLU/g_PHuj1vHM8W5Jmq0C7VJA/edit?utm_content=DAGlvd39HLU&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton
+
 ## Project Structure
 
 ```
