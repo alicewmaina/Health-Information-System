@@ -1,85 +1,94 @@
-from flask import Blueprint, request, jsonify
-from app.models import Client, HealthProgram
-from app import storage
+from flask import request, jsonify
+from app.storage import clients, programs, save_clients, save_programs
 
-main = Blueprint('main', __name__)
+def register_routes(app):
+    # Helper function for error responses
+    def error_response(message, status_code=400):
+        return jsonify({"error": message}), status_code
 
-# Create a Health Program
-@main.route('/programs', methods=['POST'])
-def create_program():
-    data = request.json
-    name = data.get('name')
+    # Create a health program
+    @app.route("/programs", methods=["POST"])
+    def create_program():
+        data = request.json
+        program_name = data.get("name")
+        if not program_name:
+            return error_response("Program name is required")
 
-    if not name:
-        return jsonify({'error': 'Program name is required'}), 400
+        # Check for duplicate program
+        if any(program["name"] == program_name for program in programs):
+            return error_response("Program already exists")
 
-    program = HealthProgram(name)
-    storage.programs.append(program)
-    return jsonify({'message': f"Program '{name}' created successfully"}), 201
+        program = {"id": len(programs) + 1, "name": program_name}
+        programs.append(program)
+        save_programs()
+        return jsonify(program), 201
 
-# Register a new Client
-@main.route('/clients', methods=['POST'])
-def register_client():
-    data = request.json
-    client_id = data.get('client_id')
-    name = data.get('name')
-    age = data.get('age')
+    # Register a new client
+    @app.route("/clients", methods=["POST"])
+    def register_client():
+        data = request.json
+        client_id = data.get("client_id")
+        name = data.get("name")
+        age = data.get("age")
 
-    if not all([client_id, name, age]):
-        return jsonify({'error': 'Client ID, Name and Age are required'}), 400
+        if not client_id or not name or not age:
+            return error_response("Client ID, name, and age are required")
 
-    if client_id in storage.clients:
-        return jsonify({'error': 'Client ID already exists'}), 400
+        # Check for duplicate client ID
+        if any(client["client_id"] == client_id for client in clients):
+            return error_response("Client ID already exists")
 
-    client = Client(client_id, name, age)
-    storage.clients[client_id] = client
-    return jsonify({'message': f"Client '{name}' registered successfully"}), 201
+        client = {"client_id": client_id, "name": name, "age": age, "programs": []}
+        clients.append(client)
+        save_clients()
+        return jsonify(client), 201
 
-# Enroll a client in programs
-@main.route('/clients/<client_id>/enroll', methods=['PUT'])
-def enroll_client(client_id):
-    data = request.json
-    program_names = data.get('programs', [])
+    # Enroll a client in programs
+    @app.route("/clients/<client_id>/enroll", methods=["PUT"])
+    def enroll_client(client_id):
+        data = request.json
+        program_names = data.get("programs")
 
-    client = storage.clients.get(client_id)
-    if not client:
-        return jsonify({'error': 'Client not found'}), 404
+        if not program_names:
+            return error_response("Program names are required")
 
-    for pname in program_names:
-        if pname not in [p.name for p in storage.programs]:
-            return jsonify({'error': f"Program '{pname}' does not exist"}), 404
-        if pname not in client.enrolled_programs:
-            client.enrolled_programs.append(pname)
+        # Find the client
+        client = next((c for c in clients if c["client_id"] == client_id), None)
+        if not client:
+            return error_response("Client not found", 404)
 
-    return jsonify({'message': f"Client '{client.name}' enrolled successfully", 'programs': client.enrolled_programs}), 200
+        # Enroll the client in programs
+        for program_name in program_names:
+            if not any(p["name"] == program_name for p in programs):
+                return error_response(f"Program '{program_name}' does not exist")
+            if program_name not in client["programs"]:
+                client["programs"].append(program_name)
 
-# Search for a client by name
-@main.route('/clients/search', methods=['GET'])
-def search_client():
-    name_query = request.args.get('name', '')
-    results = [vars(c) for c in storage.clients.values() if name_query.lower() in c.name.lower()]
+        save_clients()
+        return jsonify(client), 200
 
-    return jsonify({'results': results}), 200
+    # Search for clients by name
+    @app.route("/clients/search", methods=["GET"])
+    def search_clients():
+        name = request.args.get("name", "").lower()
+        matching_clients = [c for c in clients if name in c["name"].lower()]
+        return jsonify(matching_clients), 200
 
-# View client profile
-@main.route('/clients/<client_id>', methods=['GET'])
-def get_client_profile(client_id):
-    client = storage.clients.get(client_id)
-    if not client:
-        return jsonify({'error': 'Client not found'}), 404
+    # View a client's profile
+    @app.route("/clients/<client_id>", methods=["GET"])
+    def view_client(client_id):
+        client = next((c for c in clients if c["client_id"] == client_id), None)
+        if not client:
+            return error_response("Client not found", 404)
+        return jsonify(client), 200
 
-    return jsonify({
-        'client_id': client.client_id,
-        'name': client.name,
-        'age': client.age,
-        'enrolled_programs': client.enrolled_programs
-    }), 200
+    # Delete a client
+    @app.route("/clients/<client_id>", methods=["DELETE"])
+    def delete_client(client_id):
+        client = next((c for c in clients if c["client_id"] == client_id), None)
+        if not client:
+            return error_response("Client not found", 404)
 
-# Delete a client
-@main.route('/clients/<client_id>', methods=['DELETE'])
-def delete_client(client_id):
-    client = storage.clients.pop(client_id, None)
-    if not client:
-        return jsonify({'error': 'Client not found'}), 404
-
-    return jsonify({'message': f"Client '{client.name}' deleted successfully"}), 200 
+        clients.remove(client)
+        save_clients()
+        return jsonify({"message": "Client deleted"}), 200
